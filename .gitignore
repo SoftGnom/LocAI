@@ -1,0 +1,37 @@
+# ==========================================
+# LOCAI - GITIGNORE
+# ==========================================
+
+# Fitxers del sistema i temporals
+.DS_Store
+Thumbs.db
+*.tmp
+
+# ------------------------------------------
+# 1. VOLUM OLLAMA (Models d'IA descarregats)
+# ------------------------------------------
+# Ignora tot el contingut pesat dels models però manté la carpeta a Git
+01-Volums/01_01-LLM-Ollama/*
+!01-Volums/01_01-LLM-Ollama/.gitkeep
+
+# ------------------------------------------
+# 2. VOLUM OLLAMA SYNC (Logs de sincronització)
+# ------------------------------------------
+# Ignora tots els reports generats
+01-Volums/01_02-Ollama-Sync/reports/*
+!01-Volums/01_02-Ollama-Sync/reports/.gitkeep
+
+# Permet que els fitxers de configuració i scripts es guardin a Git
+!01-Volums/01_02-Ollama-Sync/models.json
+!01-Volums/01_02-Ollama-Sync/sync.sh
+
+# ------------------------------------------
+# 3. VOLUMS AGENT HERMES (Dades de treball)
+# ------------------------------------------
+# Configs privades/sessions generades per Hermes
+01-Volums/02_02-Agent-Hermes/config/*
+!01-Volums/02_02-Agent-Hermes/config/.gitkeep
+
+# Fitxers generats en l'espai de treball
+01-Volums/02_02-Agent-Hermes/workspace/*
+!01-Volums/02_02-Agent-Hermes/workspace/.gitkeep
