@@ -1,0 +1,205 @@
+# ==========================================
+# 1. DECLARACIÓ DE LES "PECES" (DRY)
+# ==========================================
+
+x-images:
+  ollama-image: &ollama-image docker.io/ollama/ollama:0.32.15 
+  hermes-image: &hermes-image docker.io/nousresearch/hermes-agent:latest   
+
+
+x-volumes:
+  # Utilitzem :z (minúscula) per permetre compartir carpetes
+  ollama-storage: &ollama-storage ./01-Volums/01_01-LLM-Ollama:/root/.ollama:Z
+  ollama-sync: &ollama-sync ./01-Volums/01_02-Ollama-Sync:/sync:Z
+  hermes-workspace: &hermes-workspace ./01-Volums/02_02-Agent-Hermes/workspace:/opt/data:Z
+  hermes-config: &hermes-config ./01-Volums/02_02-Agent-Hermes/config:/root/.hermes:Z
+
+
+# ==========================================
+# 2. SERVICES
+# ==========================================
+
+services:
+
+
+  # ----------------------------------------
+  # 2.1 OLLAMA
+  # ----------------------------------------
+
+  # 2.1.1 OLLAMA || PERFIL PRODUCCIÓ
+
+  ollama:
+    container_name: ollama-pro
+    profiles:
+      - produccio
+      - hermes-interna
+      - hermes-externa
+      - ollama
+    image: *ollama-image
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - *ollama-storage
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - ia-net-interna
+    healthcheck:
+      test: ["CMD", "ollama", "list"] 
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+
+  # 2.1.2 OLLAMA || PERFIL AMB INTERNET (Descàrregues)
+
+  ollama-externa:
+    container_name: ollama-ex
+    profiles:
+      - ollama-externa
+    image: *ollama-image
+    volumes:
+      - *ollama-storage
+      - *ollama-sync
+    entrypoint: ["/bin/bash", "/sync/sync.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - ia-net-externa
+
+
+  # 2.1.3 OLLAMA || PERFIL Sense INTERNET (Comprovar estat Fora de la red)
+
+  ollama-interna:
+    container_name: ollama-in
+    profiles:
+      - ollama-interna
+    image: *ollama-image
+    volumes:
+      - *ollama-storage
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    network_mode: none
+
+
+  # ----------------------------------------
+  # 2.3 HERMES AGENT
+  # ----------------------------------------
+
+  # 2.3.1 HERMES || PRODUCCIÓ (Gateway + Dashboard, Sense Internet)
+
+  hermes:
+    container_name: hermes-pro
+    profiles:
+      - produccio
+    image: *hermes-image
+    stdin_open: true
+    tty: true
+    ports:
+      - "127.0.0.1:8642:8642"   # API Gateway
+      - "127.0.0.1:9119:9119"   # Web Dashboard
+    volumes:
+      - *hermes-workspace
+      - *hermes-config
+    environment:
+       HERMES_DASHBOARD: "1"
+       HERMES_DASHBOARD_HOST: "0.0.0.0"
+       HERMES_DASHBOARD_PORT: "9119"
+       API_SERVER_ENABLED: "true"
+       API_SERVER_HOST: "0.0.0.0"
+       API_SERVER_PORT: "8642"
+       OLLAMA_HOST: "http://ollama:11434"
+       ALLOWED_HOSTS: "127.0.0.1,localhost,0.0.0.0"
+    networks:
+      - ia-net-interna
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  # 2.3.2 HERMES || INICIALITZACIÓ I SETUP (Amb accès a Internet)
+
+  hermes-externa:
+    container_name: hermes-ex
+    profiles:
+      - hermes-externa
+    image: *hermes-image
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    ports:
+      - "127.0.0.1:8642:8642"
+      - "127.0.0.1:9119:9119"
+    volumes:
+      - *hermes-workspace
+      - *hermes-config
+    environment:
+       HERMES_DASHBOARD: "1"
+       HERMES_DASHBOARD_HOST: "0.0.0.0"
+       HERMES_DASHBOARD_PORT: "9119"
+       API_SERVER_ENABLED: "true"
+       API_SERVER_HOST: "0.0.0.0"
+       API_SERVER_PORT: "8642"
+       OLLAMA_HOST: "http://ollama:11434"
+    networks:
+      - ia-net-externa
+      - ia-net-interna
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  # 2.3.3 HERMES || TERMINAL / MANTENIMENT INTERN (Sense Internet)
+
+  hermes-interna:
+    container_name: hermes-in
+    profiles:
+      - hermes-interna
+    image: *hermes-image
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    volumes:
+      - *hermes-workspace
+      - *hermes-config
+    environment:
+       HERMES_DASHBOARD: "1"
+       HERMES_DASHBOARD_HOST: "0.0.0.0"
+       HERMES_DASHBOARD_PORT: "9119"
+       API_SERVER_ENABLED: "true"
+       API_SERVER_HOST: "0.0.0.0"
+       API_SERVER_PORT: "8642"
+       OLLAMA_HOST: "http://ollama:11434"
+    networks:
+      - ia-net-interna
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+
+# ==========================================
+# 3. XARXES
+# ==========================================
+
+networks:
+  ia-net-interna:
+    driver: bridge
+    internal: true
+
+  ia-net-externa:
+    driver: bridge
+    internal: false
