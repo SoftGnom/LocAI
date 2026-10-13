@@ -5,7 +5,8 @@
 x-images:
   ollama-image: &ollama-image docker.io/ollama/ollama:0.32.15 
   hermes-image: &hermes-image docker.io/nousresearch/hermes-agent:latest   
-
+  open-webui-image: &open-webui-image ghcr.io/open-webui/open-webui:v0.11.4 #10/Oct/26
+  open-terminal-image: &open-terminal-image ghcr.io/open-webui/open-terminal:v0.14.0  #10/Oct/26
 
 x-volumes:
   # Utilitzem :z (minúscula) per permetre compartir carpetes
@@ -13,101 +14,116 @@ x-volumes:
   ollama-sync: &ollama-sync ./01-Volums/01_02-Ollama-Sync:/sync:Z
   hermes-workspace: &hermes-workspace ./01-Volums/02_02-Agent-Hermes/workspace:/opt/data:Z
   hermes-config: &hermes-config ./01-Volums/02_02-Agent-Hermes/config:/root/.hermes:Z
+  webui-storage: &webui-storage ./01-Volums/03_01-Open-WebUI:/app/backend/data:Z
+  terminal-storage: &terminal-storage ./01-Volums/03_02-Open-Terminal:/home/user:Z
 
 
 # ==========================================
-# 2. SERVICES
+# 2. PLANTILLA
+# ==========================================
+
+# 2.1 OLLAMA ||  Base (DRY)
+
+x-ollama-common: &ollama-common
+  image: *ollama-image
+  volumes:
+    - *ollama-storage
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+  healthcheck:
+    test: ["CMD", "ollama", "list"]
+    interval: 120s
+    timeout: 3s
+    retries: 5
+    start_period: 5s
+
+# ==========================================
+# 3. SERVICES
 # ==========================================
 
 services:
 
 
   # ----------------------------------------
-  # 2.1 OLLAMA
+  # 3.1 OLLAMA
   # ----------------------------------------
 
-  # 2.1.1 OLLAMA || PERFIL PRODUCCIÓ
-
-  ollama:
-    container_name: ollama-pro
+  # 3.1.1.1 OLLAMA || PERFIL PRODUCCIÓ - Hermes
+  ollama-int:
+    <<: *ollama-common
+    container_name: ollama-pro-int
     profiles:
-      - produccio
+      - produccio-ha
       - hermes-interna
       - hermes-externa
-      - ollama
-    image: *ollama-image
+      - produccio-ow
+    networks:
+      ia-net-interna:
+        aliases:
+          - ollama
+
+  # 3.1.1.2 OLLAMA || PERFIL HOST - Localhost (127.0.0.1)
+  ollama-host:
+    <<: *ollama-common
+    container_name: ollama-pro-host
+    profiles:
+      - ollama-host
     ports:
       - "127.0.0.1:11434:11434"
-    volumes:
-      - *ollama-storage
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     networks:
       - ia-net-interna
-    healthcheck:
-      test: ["CMD", "ollama", "list"] 
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 5s
 
+  # 3.1.1.3 OLLAMA || PERFIL EXTERN - Obert a la xarxa (0.0.0.0)
+  ollama-ext:
+    <<: *ollama-common
+    container_name: ollama-pro-ext
+    profiles:
+      - ollama-ext
+    ports:
+      - "0.0.0.0:11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS="*"
+    networks:
+      - ia-net-interna
 
-  # 2.1.2 OLLAMA || PERFIL AMB INTERNET (Descàrregues)
-
+  # 3.1.2 OLLAMA || PERFIL AMB INTERNET (Descàrregues)
   ollama-externa:
+    <<: *ollama-common
     container_name: ollama-ex
     profiles:
       - ollama-externa
-    image: *ollama-image
     volumes:
       - *ollama-storage
       - *ollama-sync
     entrypoint: ["/bin/bash", "/sync/sync.sh"]
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     networks:
       - ia-net-externa
 
-
-  # 2.1.3 OLLAMA || PERFIL Sense INTERNET (Comprovar estat Fora de la red)
-
+  # 3.1.3 OLLAMA || PERFIL Sense INTERNET (Comprovar estat Fora de la xarxa)
   ollama-interna:
+    <<: *ollama-common
     container_name: ollama-in
     profiles:
       - ollama-interna
-    image: *ollama-image
-    volumes:
-      - *ollama-storage
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     network_mode: none
 
 
   # ----------------------------------------
-  # 2.3 HERMES AGENT
+  # 3.2 HERMES AGENT
   # ----------------------------------------
 
-  # 2.3.1 HERMES || PRODUCCIÓ (Gateway + Dashboard, Sense Internet)
+  # 3.2.1 HERMES || PRODUCCIÓ (Gateway + Dashboard, Sense Internet)
 
   hermes:
     container_name: hermes-pro
     profiles:
-      - produccio
+      - produccio-ha
     image: *hermes-image
     stdin_open: true
     tty: true
@@ -129,10 +145,10 @@ services:
     networks:
       - ia-net-interna
     depends_on:
-      ollama:
+      ollama-int:
         condition: service_healthy
 
-  # 2.3.2 HERMES || INICIALITZACIÓ I SETUP (Amb accès a Internet)
+  # 3.2.2 HERMES || INICIALITZACIÓ I SETUP (Amb accès a Internet)
 
   hermes-externa:
     container_name: hermes-ex
@@ -160,10 +176,10 @@ services:
       - ia-net-externa
       - ia-net-interna
     depends_on:
-      ollama:
+      ollama-int:
         condition: service_healthy
 
-  # 2.3.3 HERMES || TERMINAL / MANTENIMENT INTERN (Sense Internet)
+  # 3.2.3 HERMES || TERMINAL / MANTENIMENT INTERN (Sense Internet)
 
   hermes-interna:
     container_name: hermes-in
@@ -187,12 +203,58 @@ services:
     networks:
       - ia-net-interna
     depends_on:
-      ollama:
+      ollama-int:
         condition: service_healthy
 
 
+  # ----------------------------------------
+  # 3.3.1 OPEN WEBUI
+  # ----------------------------------------
+  open-webui:
+    container_name: open-webui-pro
+    profiles:
+      - produccio-ow
+    image: *open-webui-image
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:8080"
+    volumes:
+      - *webui-storage
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=canvia-aquesta-clau-per-una-de-molt-llarga-i-aleatoria-64-chars
+      - ENABLE_KB_EXEC=True
+      - RAG_SYSTEM_CONTEXT=True
+      - WEBUI_AUTH=true
+      - DEFAULT_USER_ROLE=pending
+    networks:
+      - ia-net-interna
+    depends_on:
+      ollama-int:
+        condition: service_healthy
+
+  # ----------------------------------------
+  # 3.3.2 OPEN TERMINAL
+  # ----------------------------------------
+  open-terminal:
+    container_name: open-terminal-pro
+    profiles:
+      - produccio-ow
+    image: *open-terminal-image
+    restart: unless-stopped
+    volumes:
+      - *terminal-storage
+      # Opcional: Pots muntar aquí la ruta del teu projecte real si ho desitges
+      # - /ruta/absoluta/del/teu/projecte:/home/user/projecte:Z
+    environment:
+      - OPEN_TERMINAL_API_KEY=altra-clau-aleatoria-forta-per-terminal
+      - OPEN_TERMINAL_FILE_BROWSER_ROOT=/home/user
+      - OPEN_TERMINAL_EXECUTE_TIMEOUT=30
+    networks:
+      - ia-net-interna
+
 # ==========================================
-# 3. XARXES
+# 4. XARXES
 # ==========================================
 
 networks:
