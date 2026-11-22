@@ -35,3 +35,26 @@ Thumbs.db
 # Fitxers generats en l'espai de treball
 01-Volums/02_02-Agent-Hermes/workspace/*
 !01-Volums/02_02-Agent-Hermes/workspace/.gitkeep
+
+# ------------------------------------------
+# 4. VOLUMS Open WebUI
+# ------------------------------------------
+# Configs privades/sessions generades per Open WebUI
+01-Volums/03_01-Open-WebUI/*
+!01-Volums/03_01-Open-WebUI/.gitkeep
+
+# ------------------------------------------
+# 5. VOLUMS Open-Terminal
+# ------------------------------------------
+# Configs privades/sessions generades per Open WebUI
+01-Volums/03_02-Open-Terminal/*
+!01-Volums/03_02-Open-Terminal/.gitkeep
+
+# ------------------------------------------
+# 5. VOLUMS Overlay
+# ------------------------------------------
+# Configs privades/sessions generades per Overlay
+03-Overlay_Space/*
+!03-Overlay_Space/.gitkeep
+
+

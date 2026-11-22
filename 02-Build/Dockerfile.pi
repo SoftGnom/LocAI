@@ -1,0 +1,19 @@
+FROM node:24-bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends bash ca-certificates git ripgrep fd-find \
+  && ln -s /usr/bin/fdfind /usr/bin/fd \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+
+WORKDIR /workspace
+ENTRYPOINT ["pi"]
+
+
+
+RUN mkdir -p ~/.pi/agent && printf '%s' '{"providers": {"ollama": {"baseUrl": "http://ollama:11434/v1","api": "openai-completions","apiKey": "ollama","models": [{"id": "laguna-xs-2.1:q4_K_M"}]}}}' > ~/.pi/agent/models.json   
+
+RUN mkdir -p ~/.pi/agent && printf '%s' '{"providers": {"ollama": {"baseUrl": "http://ollama:11434/v1","api": "openai-completions","apiKey": "ollama","models": [{"id": "laguna-xs-2.1:q4_K_M","contextWindow": 8192,"maxTokens": 4096}]}}}' > ~/.pi/agent/models.json
+
+RUN mkdir -p ~/.pi/agent && printf '%s' '{"providers": {"ollama": {"baseUrl": "http://ollama:11434/v1","api": "openai-completions","apiKey": "ollama","models": [{"id": "laguna-xs-2.1:q4_K_M","contextWindow": 16384,"maxTokens": 8192}]}}}' > ~/.pi/agent/models.json

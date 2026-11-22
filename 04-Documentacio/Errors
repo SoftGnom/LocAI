@@ -1,0 +1,5 @@
+-els logs s'ha de redisenayr la ocpio(del meu principal) es unic i exclusivament per els logs aixi que la pregunta(de si vols visualitzarlos al escollir la opico) no auria se estar , amb un intro per a doanr pas als logs esta be ja que la taula del ps si , bui que estigi
+-la part de gestio de models no funciona, al acedir en el el manu de adicio no surt res
+-s'ha de rebisar tot lo de aturar i logs ja que la intenio es uqe funcnioni per a tot pero la opio de "Pi Task" no agafa res del comose, o es fa que al base estigi en el comose i els modificacios s'hafageixen despres (que no se si es posible) o es modifica las comades
+- la opcio de aturar tot no funcinoa elq eu pasa es -> "Error: executing /usr/local/bin/docker-compose --profile * down --remove-orphans: exit status 1" 
+

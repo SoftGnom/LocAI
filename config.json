@@ -5,5 +5,53 @@
   "project_presets": [
     {"name": "Projecte Actual (04-Projecte)", "path": "./04-Projecte"},
     {"name": "Projecte Backend", "path": "./ruta/al/teu/backend"}
-  ]
+  ],
+  "global_docker_config": {
+    "extra_hosts": [
+      "host.docker.internal:host-gateway"
+    ],
+    "environment": {
+      "OLLAMA_HOST": "http://host.docker.internal:11434"
+    }
+  },
+  "profiles": {
+    "projecte_analisi": {
+      "ollama_model": "llama3",
+      "prompt_file": "tasca.md",
+      "overlay_profile": "perfil_analisi",
+      "volumes": [
+        {
+          "label": "Carpeta de treball principal amb OverlayFS (Lectura i Escriptura)",
+          "host": "./contingut_virtual/perfil_analisi",
+          "container": "/workspace",
+          "mode": "rw"
+        },
+        {
+          "label": "Documentació de referència i guies d'estil (Només Lectura)",
+          "host": "./dades_compartides/referencies",
+          "container": "/app/refs",
+          "mode": "ro"
+        },
+        {
+          "label": "Carpeta de lliurament per als resultats generats per l'agent",
+          "host": "./resultats_finals",
+          "container": "/app/output",
+          "mode": "rw"
+        }
+      ]
+    },
+    "projecte_simple": {
+      "ollama_model": "llama3",
+      "prompt_file": "tasca.md",
+      "overlay_profile": "perfil_simple",
+      "volumes": [
+        {
+          "label": "Espai de treball virtual aïllat del perfil simple",
+          "host": "./contingut_virtual/perfil_simple",
+          "container": "/workspace",
+          "mode": "rw"
+        }
+      ]
+    }
+  }
 }
