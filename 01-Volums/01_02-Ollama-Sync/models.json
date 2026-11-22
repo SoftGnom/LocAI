@@ -1,5 +1,12 @@
 {
   "models": [
-    "qwen3.6:35b",
+    "granite4.1:3b",
+    "laguna-xs-2.1:q4_K_M",
+    "Qwen3:30b",
+    "qwen3.5:35b",
+    "qwen3:4b",
+    "d3:9b",
+    "d3:4b",
+    "flint:40b",
   ]
 }
