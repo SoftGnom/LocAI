@@ -208,3 +208,18 @@ get_profile_volume_field() {
   local field="$3"
   jq -r --arg p "$profile" --argjson i "$index" '.profiles[$p].volumes[$i].' "$JSON_FILE" 2>/dev/null | jq -r --arg f "$field" '.[$f] // empty' 2>/dev/null
 }
+
+
+# --- FUNCIONS PER A LA GESTIO DE LAS EINES GRAFICAS ---
+
+open_URL() {
+  local URL="$1"
+  local PERFIL_TEMP=$(mktemp -d)
+
+  # S'executa en segon pla sense bloquejar la resta de l'script
+  (
+    firefox --no-remote --new-instance --profile "$PERFIL_TEMP" "$URL"
+    rm -rf "$PERFIL_TEMP"
+  ) &
+}
+
