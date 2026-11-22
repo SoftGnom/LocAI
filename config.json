@@ -1,4 +1,9 @@
 {
   "container_engine_structure": "podman compose",
-  "container_engine": "podman"
+  "container_engine": "podman",
+  "aider_default_model": "laguna-xs-2.1:q4_K_M",
+  "project_presets": [
+    {"name": "Projecte Actual (04-Projecte)", "path": "./04-Projecte"},
+    {"name": "Projecte Backend", "path": "./ruta/al/teu/backend"}
+  ]
 }

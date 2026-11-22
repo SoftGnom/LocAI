@@ -62,6 +62,7 @@ services:
       - hermes-interna
       - hermes-externa
       - produccio-ow
+      - aider
     networks:
       ia-net-interna:
         aliases:
@@ -250,6 +251,41 @@ services:
       - OPEN_TERMINAL_API_KEY=altra-clau-aleatoria-forta-per-terminal
       - OPEN_TERMINAL_FILE_BROWSER_ROOT=/home/user
       - OPEN_TERMINAL_EXECUTE_TIMEOUT=30
+    networks:
+      - ia-net-interna
+
+
+  # ----------------------------------------
+  # 3.4 AIDER (CLI interactiu - tasques de codi)
+  # ----------------------------------------
+
+  aider:
+    container_name: aider
+    profiles:
+      - aider
+    image: paulgauthier/aider:latest
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${AIDER_WORKSPACE:-./04-Projecte}:/workspace:Z
+    user: "${UID}:${GID}"
+    command: >
+      --model ollama_chat/${AIDER_MODEL:-qwen2.5-coder:14b}
+      --openai-api-base http://ollama:11434/v1
+      --no-analytics
+      --no-check-update
+      --no-show-model-warnings
+      --no-git
+      --chat-history-file /tmp/aider.chat.history.md
+      --input-history-file /tmp/aider.input.history
+      --edit-format whole
+    depends_on:
+      ollama-int:
+        condition: service_healthy
+    environment:
+      - HOME=/tmp
+      - OLLAMA_API_BASE=http://ollama:11434
     networks:
       - ia-net-interna
 
